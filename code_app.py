@@ -101,7 +101,7 @@ col1, col2 = st.columns(2)
 with col1:
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=t, y=prey, name='Prey'))
-    fig1.add_trace(go.Scatter(x=t, y=predator, name='Predator'))
+    fig1.add_trace(go.Scatter(x=t, y=predator, name='Predator',line=dict(color="red")))
     fig1.update_layout(title='Population Over Time', xaxis_title='Time', yaxis_title='Population')
     st.plotly_chart(fig1, use_container_width=True)
     st.caption("Prey outpaces predator → prey overshoots → predator rebounds with delay.")
