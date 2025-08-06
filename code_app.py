@@ -17,8 +17,8 @@ $$
 \end{cases}
 $$
 
-- $x$: Prey population
-- $y$: Predator population
+- $x$: Prey population  
+- $y$: Predator population  
 - $\alpha$: Prey birth rate  
 - $\beta$: Predation rate  
 - $\gamma$: Predator death rate  
@@ -34,6 +34,11 @@ DEFAULTS = {
     "predator0": 9,
 }
 
+def reset_params():
+    for k, v in DEFAULTS.items():
+        if k in st.session_state:
+            st.session_state[k] = v
+
 with st.sidebar:
     st.header("Model Parameters")
     alpha = st.slider("Prey Birth Rate (α)", min_value=0.1, max_value=2.0, value=DEFAULTS["alpha"], step=0.1, key="alpha")
@@ -43,10 +48,7 @@ with st.sidebar:
     prey0 = st.number_input("Initial Prey Population", min_value=1, value=DEFAULTS["prey0"], step=1, key="prey0")
     predator0 = st.number_input("Initial Predator Population", min_value=1, value=DEFAULTS["predator0"], step=1, key="predator0")
 
-    if st.button("Reset to Default"):
-        for k, v in DEFAULTS.items():
-            st.session_state[k] = v
-        st.experimental_rerun()
+    st.button("Reset to Default", on_click=reset_params)
 
 def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     dt = t[1] - t[0]
@@ -63,7 +65,15 @@ def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     return prey, predator
 
 t = np.linspace(0, 50, 1000)
-prey, predator = lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t)
+prey, predator = lotka_volterra(
+    st.session_state.get("prey0", DEFAULTS["prey0"]),
+    st.session_state.get("predator0", DEFAULTS["predator0"]),
+    st.session_state.get("alpha", DEFAULTS["alpha"]),
+    st.session_state.get("beta", DEFAULTS["beta"]),
+    st.session_state.get("delta", DEFAULTS["delta"]),
+    st.session_state.get("gamma", DEFAULTS["gamma"]),
+    t
+)
 ratio = predator / prey
 ratio[np.isnan(ratio) | np.isinf(ratio)] = 0
 
