@@ -17,25 +17,36 @@ $$
 \end{cases}
 $$
 
-- $x$: Prey population  
-- $y$: Predator population  
+- $x$: Prey population
+- $y$: Predator population
 - $\alpha$: Prey birth rate  
 - $\beta$: Predation rate  
 - $\gamma$: Predator death rate  
 - $\delta$: Energy conversion rate  
 """)
 
+DEFAULTS = {
+    "alpha": 1.0,
+    "beta": 0.1,
+    "gamma": 1.5,
+    "delta": 0.075,
+    "prey0": 40,
+    "predator0": 9,
+}
+
 with st.sidebar:
     st.header("Model Parameters")
-    alpha = st.slider("Prey Birth Rate (α)", min_value=0.1, max_value=2.0, value=1.0, step=0.1)
-    beta = st.slider("Predation Rate (β)", min_value=0.001, max_value=1.0, value=0.1, step=0.001, format="%.3f")
-    gamma = st.slider("Predator Death Rate (γ)", min_value=0.1, max_value=2.0, value=1.5, step=0.1)
-    delta = st.slider("Energy Conversion Rate (δ)", min_value=0.001, max_value=1.0, value=0.075, step=0.001, format="%.3f")
-    prey0 = st.number_input("Initial Prey Population", min_value=1, value=40, step=1)
-    predator0 = st.number_input("Initial Predator Population", min_value=1, value=9, step=1)
+    alpha = st.slider("Prey Birth Rate (α)", min_value=0.1, max_value=2.0, value=DEFAULTS["alpha"], step=0.1, key="alpha")
+    beta = st.slider("Predation Rate (β)", min_value=0.001, max_value=1.0, value=DEFAULTS["beta"], step=0.001, format="%.3f", key="beta")
+    gamma = st.slider("Predator Death Rate (γ)", min_value=0.1, max_value=2.0, value=DEFAULTS["gamma"], step=0.1, key="gamma")
+    delta = st.slider("Energy Conversion Rate (δ)", min_value=0.001, max_value=1.0, value=DEFAULTS["delta"], step=0.001, format="%.3f", key="delta")
+    prey0 = st.number_input("Initial Prey Population", min_value=1, value=DEFAULTS["prey0"], step=1, key="prey0")
+    predator0 = st.number_input("Initial Predator Population", min_value=1, value=DEFAULTS["predator0"], step=1, key="predator0")
 
     if st.button("Reset to Default"):
-        st.rerun()
+        for k, v in DEFAULTS.items():
+            st.session_state[k] = v
+        st.experimental_rerun()
 
 def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     dt = t[1] - t[0]
@@ -46,6 +57,9 @@ def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     for i in range(1, len(t)):
         prey[i] = prey[i-1] + (alpha * prey[i-1] - beta * prey[i-1] * predator[i-1]) * dt
         predator[i] = predator[i-1] + (delta * prey[i-1] * predator[i-1] - gamma * predator[i-1]) * dt
+        # Prevent negative populations
+        prey[i] = max(prey[i], 0)
+        predator[i] = max(predator[i], 0)
     return prey, predator
 
 t = np.linspace(0, 50, 1000)
