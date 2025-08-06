@@ -34,7 +34,7 @@ DEFAULTS = {
     "predator0": 9,
 }
 
-# Session state initialization (avoids widget key conflicts)
+# 初始化 session_state，避免控件无值
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -45,27 +45,27 @@ def reset_params():
 
 with st.sidebar:
     st.header("Model Parameters")
-    st.session_state['alpha'] = st.slider(
+    st.slider(
         "Prey Birth Rate (α)", min_value=0.1, max_value=2.0,
-        value=st.session_state['alpha'], step=0.1, key="alpha"
+        value=st.session_state["alpha"], step=0.1, key="alpha"
     )
-    st.session_state['beta'] = st.slider(
+    st.slider(
         "Predation Rate (β)", min_value=0.001, max_value=1.0,
-        value=st.session_state['beta'], step=0.001, format="%.3f", key="beta"
+        value=st.session_state["beta"], step=0.001, format="%.3f", key="beta"
     )
-    st.session_state['gamma'] = st.slider(
+    st.slider(
         "Predator Death Rate (γ)", min_value=0.1, max_value=2.0,
-        value=st.session_state['gamma'], step=0.1, key="gamma"
+        value=st.session_state["gamma"], step=0.1, key="gamma"
     )
-    st.session_state['delta'] = st.slider(
+    st.slider(
         "Energy Conversion Rate (δ)", min_value=0.001, max_value=1.0,
-        value=st.session_state['delta'], step=0.001, format="%.3f", key="delta"
+        value=st.session_state["delta"], step=0.001, format="%.3f", key="delta"
     )
-    st.session_state['prey0'] = st.number_input(
-        "Initial Prey Population", min_value=1, value=st.session_state['prey0'], step=1, key="prey0"
+    st.number_input(
+        "Initial Prey Population", min_value=1, value=st.session_state["prey0"], step=1, key="prey0"
     )
-    st.session_state['predator0'] = st.number_input(
-        "Initial Predator Population", min_value=1, value=st.session_state['predator0'], step=1, key="predator0"
+    st.number_input(
+        "Initial Predator Population", min_value=1, value=st.session_state["predator0"], step=1, key="predator0"
     )
 
     st.button("Reset to Default", on_click=reset_params)
@@ -79,19 +79,18 @@ def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     for i in range(1, len(t)):
         prey[i] = prey[i-1] + (alpha * prey[i-1] - beta * prey[i-1] * predator[i-1]) * dt
         predator[i] = predator[i-1] + (delta * prey[i-1] * predator[i-1] - gamma * predator[i-1]) * dt
-        # Prevent negative populations
         prey[i] = max(prey[i], 0)
         predator[i] = max(predator[i], 0)
     return prey, predator
 
 t = np.linspace(0, 50, 1000)
 prey, predator = lotka_volterra(
-    st.session_state['prey0'],
-    st.session_state['predator0'],
-    st.session_state['alpha'],
-    st.session_state['beta'],
-    st.session_state['delta'],
-    st.session_state['gamma'],
+    st.session_state["prey0"],
+    st.session_state["predator0"],
+    st.session_state["alpha"],
+    st.session_state["beta"],
+    st.session_state["delta"],
+    st.session_state["gamma"],
     t
 )
 ratio = predator / prey
