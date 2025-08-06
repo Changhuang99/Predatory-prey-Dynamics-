@@ -1,14 +1,42 @@
-import dash
-from dash import dcc, html, Input, Output, State, ctx
-import plotly.graph_objs as go
+import streamlit as st
 import numpy as np
 import pandas as pd
-import base64
+import plotly.graph_objs as go
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
-server = app.server
+st.set_page_config(page_title="Lotka-Volterra Predator-Prey Simulator", layout="wide")
 
-# Lotka-Volterra equations
+st.title("Predator-Prey Dynamics in Marine Ecosystems")
+
+st.markdown(r"""
+**Lotka-Volterra Equations**
+
+$$
+\begin{cases}
+\frac{dx}{dt} = \alpha x - \beta x y \\
+\frac{dy}{dt} = \delta x y - \gamma y
+\end{cases}
+$$
+
+- $x$: Prey population  
+- $y$: Predator population  
+- $\alpha$: Prey birth rate  
+- $\beta$: Predation rate  
+- $\gamma$: Predator death rate  
+- $\delta$: Energy conversion rate  
+""")
+
+with st.sidebar:
+    st.header("Model Parameters")
+    alpha = st.slider("Prey Birth Rate (α)", min_value=0.1, max_value=2.0, value=1.0, step=0.1)
+    beta = st.slider("Predation Rate (β)", min_value=0.001, max_value=1.0, value=0.1, step=0.001, format="%.3f")
+    gamma = st.slider("Predator Death Rate (γ)", min_value=0.1, max_value=2.0, value=1.5, step=0.1)
+    delta = st.slider("Energy Conversion Rate (δ)", min_value=0.001, max_value=1.0, value=0.075, step=0.001, format="%.3f")
+    prey0 = st.number_input("Initial Prey Population", min_value=1, value=40, step=1)
+    predator0 = st.number_input("Initial Predator Population", min_value=1, value=9, step=1)
+
+    if st.button("Reset to Default"):
+        st.experimental_rerun()
+
 def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     dt = t[1] - t[0]
     prey = np.zeros_like(t)
@@ -20,171 +48,48 @@ def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
         predator[i] = predator[i-1] + (delta * prey[i-1] * predator[i-1] - gamma * predator[i-1]) * dt
     return prey, predator
 
-# Layout
-app.layout = html.Div([
-    dcc.Tabs(id='tabs', value='sim', children=[
-        dcc.Tab(label='Simulation', value='sim'),
-        dcc.Tab(label='Help', value='help')
-    ]),
-    html.Div(id='tabs-content')
-])
+t = np.linspace(0, 50, 1000)
+prey, predator = lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t)
+ratio = predator / prey
+ratio[np.isnan(ratio) | np.isinf(ratio)] = 0
 
-# Render tab content
-@app.callback(Output('tabs-content', 'children'), Input('tabs', 'value'))
-def render_content(tab):
-    if tab == 'sim':
-        return html.Div([
-            html.H1("Predator-Prey Dynamics in Marine Ecosystems",
-                    style={'textAlign': 'center', 'marginBottom': '40px'}),
+col1, col2 = st.columns(2)
 
-            dcc.Markdown("""
-                **Lotka-Volterra Equations**
-
-                $$
-                \\begin{cases}
-                \\frac{dx}{dt} = \\alpha x - \\beta x y \\\\
-                \\frac{dy}{dt} = \\delta x y - \\gamma y
-                \\end{cases}
-                $$
-                - $x$: Prey population
-                - $y$: Predator population
-                - $\\alpha$: Prey birth rate
-                - $\\beta$: Predation rate
-                - $\\gamma$: Predator death rate
-                - $\\delta$: Energy conversion rate
-            """, mathjax=True, style={'maxWidth': '600px', 'margin': '0 auto', 'marginBottom': '30px'}),
-
-            html.Div([
-                html.Div([
-                    html.Label("Prey Birth Rate (α)", style={'fontWeight': 'bold'}),
-                    dcc.Slider(0.1, 2.0, 0.1, value=1.0, id='alpha-slider', tooltip={"placement": "bottom", "always_visible": True}),
-                    html.Br(),
-
-                    html.Label("Predation Rate (β)", style={'fontWeight': 'bold'}),
-                    dcc.Slider(0.001, 1.0, 0.001, value=0.1, id='beta-slider', tooltip={"placement": "bottom", "always_visible": True}),
-                    html.Br(),
-
-                    html.Label("Predator Death Rate (γ)", style={'fontWeight': 'bold'}),
-                    dcc.Slider(0.1, 2.0, 0.1, value=1.5, id='gamma-slider', tooltip={"placement": "bottom", "always_visible": True}),
-                    html.Br(),
-
-                    html.Label("Energy Conversion Rate (δ)", style={'fontWeight': 'bold'}),
-                    dcc.Slider(0.001, 1.0, 0.001, value=0.075, id='delta-slider', tooltip={"placement": "bottom", "always_visible": True}),
-                    html.Br(),
-
-                    html.Label("Initial Prey Population", style={'fontWeight': 'bold'}),
-                    dcc.Input(id='prey-init', type='number', value=40, min=1, step=1),
-                    html.Br(), html.Br(),
-
-                    html.Label("Initial Predator Population", style={'fontWeight': 'bold'}),
-                    dcc.Input(id='predator-init', type='number', value=9, min=1, step=1),
-
-                    html.Br(), html.Br(),
-
-                    html.Button("Reset Parameters", id="reset-button", n_clicks=0),
-                    html.Button("Download Data (CSV)", id="download-button", n_clicks=0, style={'marginLeft': '20px'}),
-                    dcc.Download(id="download-data")
-                ], style={'maxWidth': '600px', 'margin': '0 auto', 'textAlign': 'center'})
-            ], style={'marginBottom': '30px'}),
-
-            dcc.Graph(id='time-series-graph'),
-            html.Div("Caption: Prey outpaces predator → prey overshoots → predator rebounds with delay.",
-                     style={'textAlign': 'center', 'fontStyle': 'italic'}),
-
-            dcc.Graph(id='phase-plot'),
-            html.Div("Caption: This phase plot shows the cyclical predator-prey relationship in phase space.",
-                     style={'textAlign': 'center', 'fontStyle': 'italic'}),
-
-            dcc.Graph(id='ratio-graph'),
-            html.Div("Caption: This plot shows how the predator/prey ratio evolves over time.",
-                     style={'textAlign': 'center', 'fontStyle': 'italic'})
-        ])
-    
-    elif tab == 'help':
-        return html.Div([
-            html.H2("Help: How to Use This Simulator"),
-            html.H4("📘 What the Parameters Mean"),
-            html.Ul([
-                html.Li("α (Prey Birth Rate): Growth rate of prey without predators."),
-                html.Li("β (Predation Rate): Rate at which predators consume prey."),
-                html.Li("γ (Predator Death Rate): Natural death rate of predators."),
-                html.Li("δ (Energy Conversion Rate): Efficiency of converting prey into predator offspring.")
-            ]),
-            html.H4("📖 About the Lotka-Volterra Model"),
-            html.P("This model describes how predators and prey interact and change over time based on simple rules."),
-            html.H4("🔬 Example Scenarios"),
-            html.Ul([
-                html.Li("Stable oscillations: default values."),
-                html.Li("Predator extinction: high γ, low δ."),
-                html.Li("Prey explosion: low β, high α.")
-            ]),
-            html.H4("🕹️ Using the Controls"),
-            html.Ul([
-                html.Li("Adjust parameters with sliders."),
-                html.Li("Enter initial values manually."),
-                html.Li("Click reset to restore defaults."),
-                html.Li("Click download to export population data."),
-                html.Li("To download plot images, use the camera icon (📷) at the top-right of each graph.")
-            ])
-        ], style={'lineHeight': '1.8', 'padding': '20px'})
-
-# Update graphs + CSV
-@app.callback(
-    [Output('time-series-graph', 'figure'),
-     Output('phase-plot', 'figure'),
-     Output('ratio-graph', 'figure'),
-     Output('download-data', 'data')],
-    [Input('alpha-slider', 'value'),
-     Input('beta-slider', 'value'),
-     Input('gamma-slider', 'value'),
-     Input('delta-slider', 'value'),
-     Input('prey-init', 'value'),
-     Input('predator-init', 'value'),
-     Input('download-button', 'n_clicks')],
-    prevent_initial_call=True
-)
-def update_and_download(alpha, beta, gamma, delta, prey0, predator0, download_clicks):
-    if prey0 is None or predator0 is None or prey0 <= 0 or predator0 <= 0:
-        return go.Figure(), go.Figure(), go.Figure(), None
-
-    t = np.linspace(0, 50, 1000)
-    prey, predator = lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t)
-    ratio = predator / prey
-    ratio[np.isnan(ratio) | np.isinf(ratio)] = 0
-
+with col1:
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=t, y=prey, name='Prey'))
     fig1.add_trace(go.Scatter(x=t, y=predator, name='Predator'))
     fig1.update_layout(title='Population Over Time', xaxis_title='Time', yaxis_title='Population')
+    st.plotly_chart(fig1, use_container_width=True)
+    st.caption("Prey outpaces predator → prey overshoots → predator rebounds with delay.")
 
+with col2:
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(x=prey, y=predator, mode='lines', name='Phase'))
     fig2.update_layout(title='Phase Space: Predator vs. Prey', xaxis_title='Prey Population', yaxis_title='Predator Population')
+    st.plotly_chart(fig2, use_container_width=True)
+    st.caption("This phase plot shows the cyclical predator-prey relationship.")
 
-    fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(x=t, y=ratio, name='Predator/Prey Ratio'))
-    fig3.update_layout(title='Predator to Prey Ratio Over Time', xaxis_title='Time', yaxis_title='Predator/Prey Ratio')
+st.markdown("### Predator to Prey Ratio Over Time")
+fig3 = go.Figure()
+fig3.add_trace(go.Scatter(x=t, y=ratio, name='Predator/Prey Ratio'))
+fig3.update_layout(title='Predator to Prey Ratio Over Time', xaxis_title='Time', yaxis_title='Predator/Prey Ratio')
+st.plotly_chart(fig3, use_container_width=True)
+st.caption("This plot shows how the predator/prey ratio evolves over time.")
 
-    if ctx.triggered_id == "download-button":
-        df = pd.DataFrame({'Time': t, 'Prey': prey, 'Predator': predator, 'Ratio': ratio})
-        csv_string = df.to_csv(index=False)
-        return fig1, fig2, fig3, dict(content=csv_string, filename="lotka_volterra_data.csv")
+df = pd.DataFrame({'Time': t, 'Prey': prey, 'Predator': predator, 'Ratio': ratio})
 
-    return fig1, fig2, fig3, None
-
-# Reset
-@app.callback(
-    [Output('alpha-slider', 'value'),
-     Output('beta-slider', 'value'),
-     Output('gamma-slider', 'value'),
-     Output('delta-slider', 'value'),
-     Output('prey-init', 'value'),
-     Output('predator-init', 'value')],
-    Input('reset-button', 'n_clicks')
+st.download_button(
+    label="Download Data as CSV",
+    data=df.to_csv(index=False).encode('utf-8'),
+    file_name='lotka_volterra_data.csv',
+    mime='text/csv'
 )
-def reset_parameters(n):
-    return 1.0, 0.1, 1.5, 0.075, 40, 9
 
-# Run
-if __name__ == '__main__':
-    app.run(debug=True)
+st.markdown("""
+---
+#### How to use
+- Adjust parameters in the sidebar.
+- Download simulation data using the button above.
+- All plots are interactive and can be zoomed or saved as images.
+""")
