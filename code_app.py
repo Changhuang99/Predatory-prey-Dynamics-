@@ -35,7 +35,7 @@ with st.sidebar:
     predator0 = st.number_input("Initial Predator Population", min_value=1, value=9, step=1)
 
     if st.button("Reset to Default"):
-        st.experimental_rerun()
+        st.rerun()
 
 def lotka_volterra(prey0, predator0, alpha, beta, delta, gamma, t):
     dt = t[1] - t[0]
