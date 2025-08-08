@@ -34,7 +34,7 @@ DEFAULTS = {
     "predator0": 9,
 }
 
-# 初始化 session_state，避免控件无值
+# Initialize the session_state to prevent the control from having no value.
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
